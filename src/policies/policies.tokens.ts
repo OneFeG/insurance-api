@@ -1,0 +1,2 @@
+export const POLICY_FACTORIES = Symbol('POLICY_FACTORIES');
+export const RATING_STRATEGIES = Symbol('RATING_STRATEGIES');
