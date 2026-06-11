@@ -1,0 +1,410 @@
+{
+  "info": {
+    "name": "Insurance API - Capstone",
+    "description": "Colección de Postman para probar la Insurance API (Customers y Policies). Incluye: 4 ramos, 3 estrategias, recorrido completo de estados y casos de error.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "policyId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Customers",
+      "description": "CRUD mínimo de customers (módulo reutilizado de users).",
+      "item": [
+        {
+          "name": "Crear Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('customerId', body.id);",
+                  "  pm.test('Customer creado exitosamente', () => {",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('email');",
+                  "    pm.expect(body.isActive).to.eql(true);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ada Lovelace\",\n  \"email\": \"ada@local.dev\",\n  \"password\": \"ChangeMe123\",\n  \"role\": \"CLIENT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Customer por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policies",
+      "description": "Policies: Factory Method + Strategy + Builder + State + Observer (Kafka).",
+      "item": [
+        {
+          "name": "Crear Póliza (AUTO + STANDARD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('policyId', body.id);",
+                  "  pm.test('Póliza creada en QUOTED', () => {",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('policyNumber');",
+                  "    pm.expect(body.status).to.eql('QUOTED');",
+                  "    pm.expect(body.branch).to.eql('AUTO');",
+                  "    pm.expect(body.ratingStrategy).to.eql('STANDARD');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"branch\": \"AUTO\",\n  \"ratingStrategy\": \"STANDARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies"]
+            }
+          }
+        },
+        {
+          "name": "Crear Póliza (LIFE + RISK_BASED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('policyId', body.id);",
+                  "  pm.test('Póliza creada en QUOTED', () => {",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('policyNumber');",
+                  "    pm.expect(body.status).to.eql('QUOTED');",
+                  "    pm.expect(body.branch).to.eql('LIFE');",
+                  "    pm.expect(body.ratingStrategy).to.eql('RISK_BASED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"branch\": \"LIFE\",\n  \"ratingStrategy\": \"RISK_BASED\",\n  \"riskProfile\": { \"riskScore\": 30 }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies"]
+            }
+          }
+        },
+        {
+          "name": "Caso de Error (RISK_BASED sin riskScore) -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Debe responder 400', () => {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"branch\": \"HOME\",\n  \"ratingStrategy\": \"RISK_BASED\",\n  \"riskProfile\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies"]
+            }
+          }
+        },
+        {
+          "name": "Crear Póliza (HEALTH + LOYALTY)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('policyId', body.id);",
+                  "  pm.test('Póliza creada en QUOTED', () => {",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('policyNumber');",
+                  "    pm.expect(body.status).to.eql('QUOTED');",
+                  "    pm.expect(body.branch).to.eql('HEALTH');",
+                  "    pm.expect(body.ratingStrategy).to.eql('LOYALTY');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"branch\": \"HEALTH\",\n  \"ratingStrategy\": \"LOYALTY\",\n  \"riskProfile\": { \"customerSince\": 2022 }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Póliza por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}"]
+            }
+          }
+        },
+        {
+          "name": "Listar Pólizas del Customer",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies/customer/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "customer", "{{customerId}}"]
+            }
+          }
+        },
+        {
+          "name": "QUOTED -> ISSUED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"ISSUED\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "ISSUED -> ACTIVE",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"ACTIVE\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "ACTIVE -> SUSPENDED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"SUSPENDED\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "SUSPENDED -> ACTIVE",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"ACTIVE\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "* -> CANCELLED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"CANCELLED\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Caso de Error (CANCELLED -> ACTIVE) -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Debe responder 400', () => {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"targetStatus\": \"ACTIVE\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/policies/{{policyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["policies", "{{policyId}}", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

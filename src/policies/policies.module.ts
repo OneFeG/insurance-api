@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
+import { EventsModule } from '../shared/events/events.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PolicyController } from './infrastructure/controllers/policy.controller';
 import { PolicyTypeormEntity } from './infrastructure/persistence/policy.typeorm-entity';
 import { PolicyMapper } from './infrastructure/persistence/policy.mapper';
@@ -26,7 +28,12 @@ import { FindCustomerPoliciesUseCase } from './application/use-cases/find-custom
 import { ChangePolicyStatusUseCase } from './application/use-cases/change-policy-status.use-case';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PolicyTypeormEntity]), UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([PolicyTypeormEntity]),
+    UsersModule,
+    EventsModule,
+    NotificationsModule,
+  ],
   controllers: [PolicyController],
   providers: [
     PolicyMapper,
