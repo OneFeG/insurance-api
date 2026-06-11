@@ -13,16 +13,18 @@ export class KafkaEventPublisher
   private admin: Admin;
 
   static readonly TOPICS = [
-    'transfer.completed',
-    'transfer.clearing',
-    'transfer.failed',
+    'policy.issued',
+    'policy.activated',
+    'policy.suspended',
+    'policy.reactivated',
+    'policy.cancelled',
   ];
 
   constructor(private readonly config: ConfigService) {
     super();
     this.kafka = new Kafka({
-      clientId: this.config.get<string>('KAFKA_CLIENT_ID', 'bank-api'),
-      brokers: [this.config.get<string>('KAFKA_BROKER', 'localhost:9094')],
+      clientId: this.config.get<string>('KAFKA_CLIENT_ID', 'insurance-api'),
+      brokers: [this.config.get<string>('KAFKA_BROKER', 'localhost:9096')],
       logLevel: logLevel.WARN,
     });
     this.producer = this.kafka.producer();
@@ -53,12 +55,19 @@ export class KafkaEventPublisher
     console.log('[KafkaEventPublisher] Producer disconnected');
   }
 
-  async publish(topic: string, event: Record<string, any>): Promise<void> {
+  async publish(topic: string, event: Record<string, unknown>): Promise<void> {
+    const key =
+      typeof event['policyId'] === 'string'
+        ? event['policyId']
+        : typeof event['id'] === 'string'
+          ? event['id']
+          : undefined;
+
     await this.producer.send({
       topic,
       messages: [
         {
-          key: event.transferId ?? event.id ?? undefined,
+          key,
           value: JSON.stringify(event),
           timestamp: Date.now().toString(),
         },

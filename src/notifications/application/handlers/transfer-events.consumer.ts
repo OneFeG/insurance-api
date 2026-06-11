@@ -2,21 +2,37 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kafka, Consumer, EachMessagePayload, logLevel } from 'kafkajs';
 
+function safeString(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return String(value);
+  }
+  return JSON.stringify(value);
+}
+
 @Injectable()
-export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
+export class NotificationsConsumer implements OnModuleInit, OnModuleDestroy {
   private kafka: Kafka;
   private consumer: Consumer;
 
   private readonly topics = [
-    'transfer.completed',
-    'transfer.clearing',
-    'transfer.failed',
+    'policy.issued',
+    'policy.activated',
+    'policy.suspended',
+    'policy.reactivated',
+    'policy.cancelled',
   ];
 
   constructor(private readonly config: ConfigService) {
     this.kafka = new Kafka({
-      clientId: this.config.get<string>('KAFKA_CLIENT_ID', 'bank-api'),
-      brokers: [this.config.get<string>('KAFKA_BROKER', 'localhost:9094')],
+      clientId: this.config.get<string>('KAFKA_CLIENT_ID', 'insurance-api'),
+      brokers: [this.config.get<string>('KAFKA_BROKER', 'localhost:9096')],
       logLevel: logLevel.WARN,
     });
   }
@@ -31,7 +47,7 @@ export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
         this.consumer = this.kafka.consumer({
           groupId: this.config.get<string>(
             'KAFKA_CONSUMER_GROUP',
-            'bank-api-group',
+            'insurance-api-notifications',
           ),
           retry: { retries: 3 },
         });
@@ -43,25 +59,23 @@ export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
         }
 
         await this.consumer.run({
-          eachMessage: async (payload: EachMessagePayload) => {
-            await this.handleMessage(payload);
-          },
+          eachMessage: (payload: EachMessagePayload) =>
+            Promise.resolve(this.handleMessage(payload)),
         });
 
         console.log(
-          `[TransferEventsConsumer] Listening on topics: ${this.topics.join(', ')}`,
+          `[NotificationsConsumer] Listening on topics: ${this.topics.join(', ')}`,
         );
         return;
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         console.warn(
-          `[TransferEventsConsumer] Attempt ${attempt}/${retries} failed: ${error.message}`,
+          `[NotificationsConsumer] Attempt ${attempt}/${retries} failed: ${message}`,
         );
-        try {
-          await this.consumer.disconnect();
-        } catch {}
+        await this.consumer.disconnect().catch(() => undefined);
         if (attempt === retries) {
           console.error(
-            '[TransferEventsConsumer] Could not connect after retries.',
+            '[NotificationsConsumer] Could not connect after retries.',
           );
           return;
         }
@@ -72,57 +86,92 @@ export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.consumer.disconnect();
-    console.log('[TransferEventsConsumer] Consumer disconnected');
+    console.log('[NotificationsConsumer] Consumer disconnected');
   }
 
-  private async handleMessage(payload: EachMessagePayload): Promise<void> {
+  private handleMessage(payload: EachMessagePayload): void {
     const { topic, message } = payload;
-    const event = JSON.parse(message.value?.toString() ?? '{}');
+    const event = JSON.parse(message.value?.toString() ?? '{}') as Record<
+      string,
+      unknown
+    >;
 
-    switch (topic) {
-      case 'transfer.completed':
-        await this.onTransferCompleted(event);
-        break;
-      case 'transfer.clearing':
-        await this.onTransferClearing(event);
-        break;
-      case 'transfer.failed':
-        await this.onTransferFailed(event);
-        break;
+    const handlerByTopic = new Map<
+      string,
+      (event: Record<string, unknown>) => void
+    >([
+      ['policy.issued', (e) => this.onPolicyIssued(e)],
+      ['policy.activated', (e) => this.onPolicyActivated(e)],
+      ['policy.suspended', (e) => this.onPolicySuspended(e)],
+      ['policy.reactivated', (e) => this.onPolicyReactivated(e)],
+      ['policy.cancelled', (e) => this.onPolicyCancelled(e)],
+    ]);
+
+    const handler = handlerByTopic.get(topic);
+    if (!handler) {
+      return;
     }
+
+    handler(event);
   }
 
-  private async onTransferCompleted(
-    event: Record<string, any>,
-  ): Promise<void> {
+  private onPolicyIssued(event: Record<string, unknown>): void {
+    const policyNumber = safeString(event['policyNumber']);
+    const customerId = safeString(event['customerId']);
+    const branch = safeString(event['branch']);
     console.log(
-      `[Observer:Notification] ✅ Transfer COMPLETED | ` +
-        `ID: ${event.transferId} | ` +
-        `From: ${event.sourceUserId} → To: ${event.targetUserId} | ` +
-        `Amount: $${event.amount} | Fee: $${event.fee} | ` +
-        `Type: ${event.type}`,
-    );
-    // Here you would integrate: email service, push notification, SMS, etc.
-  }
-
-  private async onTransferClearing(
-    event: Record<string, any>,
-  ): Promise<void> {
-    console.log(
-      `[Observer:Notification] ⏳ Transfer CLEARING | ` +
-        `ID: ${event.transferId} | ` +
-        `From: ${event.sourceUserId} → To: ${event.targetUserId} | ` +
-        `Amount: $${event.amount} | Type: ${event.type} | ` +
-        `Funds will be available after clearing period`,
+      `[Observer:Notification] Policy ISSUED | ` +
+        `Policy: ${policyNumber} | ` +
+        `Customer: ${customerId} | ` +
+        `Branch: ${branch}`,
     );
   }
 
-  private async onTransferFailed(event: Record<string, any>): Promise<void> {
+  private onPolicyActivated(event: Record<string, unknown>): void {
+    const policyNumber = safeString(event['policyNumber']);
+    const customerId = safeString(event['customerId']);
+    const branch = safeString(event['branch']);
     console.log(
-      `[Observer:Notification] ❌ Transfer FAILED | ` +
-        `ID: ${event.transferId} | ` +
-        `From: ${event.sourceUserId} → To: ${event.targetUserId} | ` +
-        `Amount: $${event.amount} | Type: ${event.type}`,
+      `[Observer:Notification] Policy ACTIVATED | ` +
+        `Policy: ${policyNumber} | ` +
+        `Customer: ${customerId} | ` +
+        `Branch: ${branch}`,
+    );
+  }
+
+  private onPolicySuspended(event: Record<string, unknown>): void {
+    const policyNumber = safeString(event['policyNumber']);
+    const customerId = safeString(event['customerId']);
+    const branch = safeString(event['branch']);
+    console.log(
+      `[Observer:Notification] Policy SUSPENDED | ` +
+        `Policy: ${policyNumber} | ` +
+        `Customer: ${customerId} | ` +
+        `Branch: ${branch}`,
+    );
+  }
+
+  private onPolicyReactivated(event: Record<string, unknown>): void {
+    const policyNumber = safeString(event['policyNumber']);
+    const customerId = safeString(event['customerId']);
+    const branch = safeString(event['branch']);
+    console.log(
+      `[Observer:Notification] Policy REACTIVATED | ` +
+        `Policy: ${policyNumber} | ` +
+        `Customer: ${customerId} | ` +
+        `Branch: ${branch}`,
+    );
+  }
+
+  private onPolicyCancelled(event: Record<string, unknown>): void {
+    const policyNumber = safeString(event['policyNumber']);
+    const customerId = safeString(event['customerId']);
+    const branch = safeString(event['branch']);
+    console.log(
+      `[Observer:Notification] Policy CANCELLED | ` +
+        `Policy: ${policyNumber} | ` +
+        `Customer: ${customerId} | ` +
+        `Branch: ${branch}`,
     );
   }
 }

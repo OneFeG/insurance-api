@@ -1,3 +1,6 @@
 export abstract class EventPublisherPort {
-  abstract publish(topic: string, event: Record<string, any>): Promise<void>;
+  abstract publish(
+    topic: string,
+    event: Record<string, unknown>,
+  ): Promise<void>;
 }

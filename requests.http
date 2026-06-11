@@ -1,0 +1,111 @@
+@baseUrl = http://localhost:3000/api
+
+###
+# Crear customer
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "Ada Lovelace",
+  "email": "ada@local.dev",
+  "password": "ChangeMe123",
+  "role": "CLIENT"
+}
+
+###
+# Obtener customer por id
+GET {{baseUrl}}/customers/{{customerId}}
+
+###
+# Crear póliza (AUTO + STANDARD)
+POST {{baseUrl}}/policies
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "branch": "AUTO",
+  "ratingStrategy": "STANDARD"
+}
+
+###
+# Crear póliza (LIFE + RISK_BASED)
+POST {{baseUrl}}/policies
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "branch": "LIFE",
+  "ratingStrategy": "RISK_BASED",
+  "riskProfile": { "riskScore": 30 }
+}
+
+###
+# Caso de error (RISK_BASED sin riskScore) -> 400
+POST {{baseUrl}}/policies
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "branch": "HOME",
+  "ratingStrategy": "RISK_BASED",
+  "riskProfile": {}
+}
+
+###
+# Crear póliza (HEALTH + LOYALTY)
+POST {{baseUrl}}/policies
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "branch": "HEALTH",
+  "ratingStrategy": "LOYALTY",
+  "riskProfile": { "customerSince": 2022 }
+}
+
+###
+# Obtener póliza por id
+GET {{baseUrl}}/policies/{{policyId}}
+
+###
+# Listar pólizas del customer
+GET {{baseUrl}}/policies/customer/{{customerId}}
+
+###
+# Recorrido de ciclo de vida: QUOTED -> ISSUED -> ACTIVE -> SUSPENDED -> ACTIVE -> CANCELLED
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "ISSUED" }
+
+###
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "ACTIVE" }
+
+###
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "SUSPENDED" }
+
+###
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "ACTIVE" }
+
+###
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "CANCELLED" }
+
+###
+# Caso de error: transición inválida (CANCELLED -> ACTIVE) -> 400
+PATCH {{baseUrl}}/policies/{{policyId}}/status
+Content-Type: application/json
+
+{ "targetStatus": "ACTIVE" }
+

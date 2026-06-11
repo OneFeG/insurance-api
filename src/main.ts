@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,19 +14,19 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new DomainExceptionFilter());
 
   app.setGlobalPrefix('api');
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Bank API')
+    .setTitle('Insurance API')
     .setDescription(
-      'NestJS service demonstrating hexagonal architecture and design patterns ' +
-        '(Strategy, Observer, Factory Method, Builder, State).',
+      'NestJS service implementing a hexagonal architecture and design patterns ' +
+        '(Factory Method, Strategy, Builder, State, Observer, Singleton).',
     )
     .setVersion('0.1.0')
-    .addTag('insurance-products')
-    .addTag('transfers')
-    .addTag('users')
+    .addTag('policies')
+    .addTag('customers')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
@@ -35,4 +36,4 @@ async function bootstrap() {
   console.log(`Application running on: http://localhost:${port}/api`);
   console.log(`Swagger UI available at: http://localhost:${port}/api/docs`);
 }
-bootstrap();
+void bootstrap();

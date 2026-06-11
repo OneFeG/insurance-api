@@ -19,7 +19,7 @@ import { FindAllUsersUseCase } from '../../application/use-cases/find-all-users.
 import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-case';
 import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
 
-@Controller('users')
+@Controller('customers')
 export class UserController {
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
